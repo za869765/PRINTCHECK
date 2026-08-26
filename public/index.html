@@ -130,7 +130,7 @@
       <button class="btn ok" id="scan-ok" disabled>✅ 掃描OK</button>
       <button class="btn fail" id="scan-fail" disabled>❌ 掃描失敗</button>
     </div>
-    <div class="hint">點按鈕就直接回報，重複點選會以最後一次為準。</div>
+    <div class="hint" id="scan-hint">點按鈕就直接回報，重複點選會以最後一次為準。</div>
   </div>
 
   <div class="card">
@@ -146,7 +146,7 @@
 <div id="toast"></div>
 
 <script>
-const VERSION = 'v1.0.0';
+const VERSION = 'v1.0.1';
 document.getElementById('ver').textContent = VERSION;
 
 const LABELS = {
@@ -155,6 +155,7 @@ const LABELS = {
 };
 
 let NAMES = [];
+let NOSCAN = [];
 let LATEST = {};
 
 const whoSel = document.getElementById('who');
@@ -184,12 +185,17 @@ function toast(msg) {
 function renderButtons() {
   const who = whoSel.value;
   const mine = LATEST[who] || {};
+  const noScan = NOSCAN.includes(who);
   for (const [id, b] of Object.entries(btns)) {
     const el = document.getElementById(id);
-    el.disabled = !who;
+    const blocked = noScan && b.category === 'scan';
+    el.disabled = !who || blocked;
     const cur = mine[b.category];
-    el.classList.toggle('active', !!cur && cur.result === b.result);
+    el.classList.toggle('active', !blocked && !!cur && cur.result === b.result);
   }
+  document.getElementById('scan-hint').textContent = noScan
+    ? '這台電腦沒有掃描功能，不用回報掃描。'
+    : '點按鈕就直接回報，重複點選會以最後一次為準。';
 }
 
 function renderOverview() {
@@ -207,7 +213,10 @@ function renderOverview() {
       const td = document.createElement('td');
       const span = document.createElement('span');
       const cur = rec[cat];
-      if (cur) {
+      if (cat === 'scan' && NOSCAN.includes(name)) {
+        span.className = 'badge none';
+        span.textContent = '— 免掃描';
+      } else if (cur) {
         span.className = 'badge ' + cur.result;
         span.textContent = (cur.result === 'ok' ? '✅ ' : '❌ ') + LABELS[cat][cur.result];
         if (!lastAt || cur.at > lastAt) lastAt = cur.at;
@@ -231,6 +240,7 @@ async function load() {
     const res = await fetch('/api/status', { cache: 'no-store' });
     const data = await res.json();
     NAMES = data.names || [];
+    NOSCAN = data.noScan || [];
     LATEST = data.latest || {};
     if (whoSel.options.length <= 1) {
       for (const n of NAMES) {

@@ -4,6 +4,9 @@ const NAMES = [
   '顏詩瑋', '黃瑞培', '值班室', '醫師辦公室', '前台筆電'
 ];
 
+// 無掃描功能的電腦，不接受掃描回報
+const NO_SCAN = ['值班室', '醫師辦公室', '前台筆電'];
+
 async function ensureSchema(db) {
   await db.prepare(`CREATE TABLE IF NOT EXISTS reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,7 +36,7 @@ export async function onRequestGet({ env }) {
     if (!latest[r.name]) latest[r.name] = {};
     latest[r.name][r.category] = { result: r.result, at: r.at };
   }
-  return json({ names: NAMES, latest });
+  return json({ names: NAMES, noScan: NO_SCAN, latest });
 }
 
 export async function onRequestPost({ request, env }) {
@@ -44,6 +47,7 @@ export async function onRequestPost({ request, env }) {
   if (!NAMES.includes(name)) return json({ error: 'unknown name' }, 400);
   if (!['print', 'scan'].includes(category)) return json({ error: 'bad category' }, 400);
   if (!['ok', 'fail'].includes(result)) return json({ error: 'bad result' }, 400);
+  if (category === 'scan' && NO_SCAN.includes(name)) return json({ error: 'no scanner' }, 400);
   const at = new Date().toISOString();
   await env.DB.prepare('INSERT INTO reports (name, category, result, at) VALUES (?,?,?,?)')
     .bind(name, category, result, at).run();
