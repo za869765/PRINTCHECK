@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>列印/掃描回報</title>
+<style>
+  :root {
+    --purple: #673ab7;
+    --purple-dark: #4527a0;
+    --ok: #1e8e3e;
+    --ok-bg: #e6f4ea;
+    --fail: #d93025;
+    --fail-bg: #fce8e6;
+    --gray: #80868b;
+    --card-bg: #fff;
+    --border: #dadce0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+    background: #f0ebf8;
+    color: #202124;
+    padding: 12px 12px 40px;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 12px;
+  }
+  .card.header {
+    border-top: 10px solid var(--purple);
+    padding-top: 16px;
+  }
+  .card.header h1 { font-size: 1.6rem; font-weight: 400; margin-bottom: 6px; }
+  .card.header p { color: #5f6368; font-size: .9rem; }
+  .q-title { font-size: 1.05rem; font-weight: 600; margin-bottom: 14px; }
+  .q-title .req { color: var(--fail); margin-left: 4px; }
+  select {
+    width: 100%;
+    font-size: 1.1rem;
+    padding: 12px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+    color: #202124;
+  }
+  .btn-row { display: flex; gap: 10px; }
+  .btn {
+    flex: 1;
+    font-size: 1.05rem;
+    padding: 16px 6px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    cursor: pointer;
+    color: #202124;
+    transition: background .15s, border-color .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.ok.active { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); font-weight: 700; }
+  .btn.fail.active { background: var(--fail-bg); border-color: var(--fail); color: var(--fail); font-weight: 700; }
+  .hint { font-size: .82rem; color: var(--gray); margin-top: 10px; }
+  /* 總覽 */
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  th, td { padding: 9px 4px; border-bottom: 1px solid #f1f3f4; text-align: center; }
+  th { color: #5f6368; font-weight: 600; font-size: .85rem; }
+  td.name { text-align: left; font-weight: 600; white-space: nowrap; }
+  .badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 12px;
+    font-size: .82rem;
+    white-space: nowrap;
+  }
+  .badge.ok { background: var(--ok-bg); color: var(--ok); }
+  .badge.fail { background: var(--fail-bg); color: var(--fail); }
+  .badge.none { background: #f1f3f4; color: var(--gray); }
+  td.time { font-size: .75rem; color: var(--gray); white-space: nowrap; }
+  /* toast */
+  #toast {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%) translateY(20px);
+    background: #323232;
+    color: #fff;
+    padding: 11px 20px;
+    border-radius: 6px;
+    font-size: .95rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s, transform .25s;
+    max-width: 90vw;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  footer { text-align: center; color: #9aa0a6; font-size: .75rem; margin-top: 18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card header">
+    <h1>列印/掃描回報</h1>
+    <p>選擇你是誰，點一下按鈕即完成回報（可代別台電腦填答）</p>
+  </div>
+
+  <div class="card">
+    <div class="q-title">你是誰？<span class="req">*</span></div>
+    <select id="who">
+      <option value="">請選擇…</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <div class="q-title">🖨️ 列印測試</div>
+    <div class="btn-row">
+      <button class="btn ok" id="print-ok" disabled>✅ 列印OK</button>
+      <button class="btn fail" id="print-fail" disabled>❌ 無法列印</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="q-title">📠 掃描測試</div>
+    <div class="btn-row">
+      <button class="btn ok" id="scan-ok" disabled>✅ 掃描OK</button>
+      <button class="btn fail" id="scan-fail" disabled>❌ 掃描失敗</button>
+    </div>
+    <div class="hint">點按鈕就直接回報，重複點選會以最後一次為準。</div>
+  </div>
+
+  <div class="card">
+    <div class="q-title">📋 回報總覽</div>
+    <table>
+      <thead><tr><th style="text-align:left">電腦</th><th>列印</th><th>掃描</th><th>最後回報</th></tr></thead>
+      <tbody id="overview"></tbody>
+    </table>
+  </div>
+
+  <footer>PRINTCHECK <span id="ver"></span></footer>
+</div>
+<div id="toast"></div>
+
+<script>
+const VERSION = 'v1.0.0';
+document.getElementById('ver').textContent = VERSION;
+
+const LABELS = {
+  print: { ok: '列印OK', fail: '無法列印' },
+  scan:  { ok: '掃描OK', fail: '掃描失敗' }
+};
+
+let NAMES = [];
+let LATEST = {};
+
+const whoSel = document.getElementById('who');
+const btns = {
+  'print-ok':  { category: 'print', result: 'ok' },
+  'print-fail':{ category: 'print', result: 'fail' },
+  'scan-ok':   { category: 'scan', result: 'ok' },
+  'scan-fail': { category: 'scan', result: 'fail' }
+};
+
+function fmtTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  const p = n => String(n).padStart(2, '0');
+  return `${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+function renderButtons() {
+  const who = whoSel.value;
+  const mine = LATEST[who] || {};
+  for (const [id, b] of Object.entries(btns)) {
+    const el = document.getElementById(id);
+    el.disabled = !who;
+    const cur = mine[b.category];
+    el.classList.toggle('active', !!cur && cur.result === b.result);
+  }
+}
+
+function renderOverview() {
+  const tbody = document.getElementById('overview');
+  tbody.innerHTML = '';
+  for (const name of NAMES) {
+    const rec = LATEST[name] || {};
+    const tr = document.createElement('tr');
+    const tdName = document.createElement('td');
+    tdName.className = 'name';
+    tdName.textContent = name;
+    tr.appendChild(tdName);
+    let lastAt = '';
+    for (const cat of ['print', 'scan']) {
+      const td = document.createElement('td');
+      const span = document.createElement('span');
+      const cur = rec[cat];
+      if (cur) {
+        span.className = 'badge ' + cur.result;
+        span.textContent = (cur.result === 'ok' ? '✅ ' : '❌ ') + LABELS[cat][cur.result];
+        if (!lastAt || cur.at > lastAt) lastAt = cur.at;
+      } else {
+        span.className = 'badge none';
+        span.textContent = '未回報';
+      }
+      td.appendChild(span);
+      tr.appendChild(td);
+    }
+    const tdTime = document.createElement('td');
+    tdTime.className = 'time';
+    tdTime.textContent = fmtTime(lastAt);
+    tr.appendChild(tdTime);
+    tbody.appendChild(tr);
+  }
+}
+
+async function load() {
+  try {
+    const res = await fetch('/api/status', { cache: 'no-store' });
+    const data = await res.json();
+    NAMES = data.names || [];
+    LATEST = data.latest || {};
+    if (whoSel.options.length <= 1) {
+      for (const n of NAMES) {
+        const opt = document.createElement('option');
+        opt.value = n;
+        opt.textContent = n;
+        whoSel.appendChild(opt);
+      }
+      const saved = localStorage.getItem('printcheck_who');
+      if (saved && NAMES.includes(saved)) whoSel.value = saved;
+    }
+    renderButtons();
+    renderOverview();
+  } catch (e) {
+    toast('讀取失敗，請檢查網路');
+  }
+}
+
+whoSel.addEventListener('change', () => {
+  try { localStorage.setItem('printcheck_who', whoSel.value); } catch {}
+  renderButtons();
+});
+
+for (const [id, b] of Object.entries(btns)) {
+  document.getElementById(id).addEventListener('click', async () => {
+    const who = whoSel.value;
+    if (!who) return;
+    // 樂觀更新
+    if (!LATEST[who]) LATEST[who] = {};
+    LATEST[who][b.category] = { result: b.result, at: new Date().toISOString() };
+    renderButtons();
+    renderOverview();
+    try {
+      const res = await fetch('/api/status', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ name: who, category: b.category, result: b.result })
+      });
+      if (!res.ok) throw new Error('bad status');
+      toast(`已回報：${who} ${LABELS[b.category][b.result]}`);
+      load();
+    } catch (e) {
+      toast('回報失敗，請再點一次');
+      load();
+    }
+  });
+}
+
+load();
+// 每 30 秒更新總覽（背景分頁跳過）
+setInterval(() => { if (!document.hidden) load(); }, 30000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) load(); });
+</script>
+</body>
+</html>

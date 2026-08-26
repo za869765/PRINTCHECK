@@ -1,0 +1,8 @@
+name = "printcheck"
+compatibility_date = "2026-07-01"
+pages_build_output_dir = "public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "printcheck-db"
+database_id = "ceec571e-66b5-430e-811e-2ffb6484399a"
