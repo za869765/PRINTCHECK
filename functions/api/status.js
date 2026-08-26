@@ -1,11 +1,11 @@
 const NAMES = [
   '侯晏筑', '吳美蓉', '呂佳卉', '李侞蓁', '王聖捷',
   '蔡沛汝', '蔡錦慧', '鄭兆鑫', '陳伶雯', '陳翊瑄',
-  '顏詩瑋', '黃瑞培', '值班室'
+  '顏詩瑋', '黃瑞培', '值班室', '預注室(內)', '預注室(外)'
 ];
 
 // 無掃描功能的電腦，不接受掃描回報
-const NO_SCAN = ['值班室'];
+const NO_SCAN = ['值班室', '預注室(內)', '預注室(外)'];
 
 async function ensureSchema(db) {
   await db.prepare(`CREATE TABLE IF NOT EXISTS reports (
